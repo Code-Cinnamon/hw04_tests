@@ -29,9 +29,11 @@ def profile(request, username):
     user_author = get_object_or_404(User, username=username)
     post_list = user_author.posts.all()
     page_obj = paginator_obj(request, post_list)
+    post_number = post_list.count()
     context = {
         'page_obj': page_obj,
-        'user_author': user_author,
+        'author': user_author,
+        'post_number': post_number,
     }
     return render(request, 'posts/profile.html', context)
 

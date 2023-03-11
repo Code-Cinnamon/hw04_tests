@@ -29,9 +29,14 @@ class Post(models.Model):
         null=True,
         related_name='posts',
     )
-
-    class Meta:
-        ordering = ["-pub_date"]
+    image = models.ImageField(
+        'Картинка',
+        upload_to='posts/',
+        blank=True
+    )
 
     def __str__(self):
         return self.text[:15]
+
+    class Meta:
+        ordering = ['-pub_date', '-pk']

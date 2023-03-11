@@ -1,15 +1,17 @@
 from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 from django import forms
+
 
 from ..models import Group, Post
 
 User = get_user_model()
 
 
-class PostPagesTests(TestCase):
+class PostsPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -21,6 +23,29 @@ class PostPagesTests(TestCase):
             slug='test-slug',
             description='Тестовое описание',
         )
+        TEST_POST_COUNT = 5
+        posts = (
+            Post(
+                author=cls.user,
+                text=f'Тестовый пост №{i}',
+                group=cls.group) for i in range(TEST_POST_COUNT))
+        Post.objects.bulk_create(posts)
+        cls.post = Post.objects.get(pk=1)
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x02\x00'
+            b'\x01\x00\x80\x00\x00\x00\x00\x00'
+            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+            b'\x0A\x00\x3B'
+        )
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
+        cls.post.image = uploaded
+        cls.post.save()
 
     def test_pages_uses_correct_template(self):
         """Во view-функциях используются соответствующие шаблоны."""
@@ -47,6 +72,82 @@ class PostPagesTests(TestCase):
             with self.subTest(reverse_name=reverse_name):
                 response = self.authorized_client.get(reverse_name)
                 self.assertTemplateUsed(response, template)
+
+    def test_post_create_show_correct_context(self):
+        """Шаблон post_create сформирован с правильным контекстом."""
+        response = self.authorized_client.get(reverse('posts:post_create'))
+        form_fields = {
+            'text': forms.fields.CharField,
+            'group': forms.models.ModelChoiceField,
+        }
+        for value, expected in form_fields.items():
+            with self.subTest(value=value):
+                form_field = response.context.get('form').fields.get(value)
+                self.assertIsInstance(form_field, expected)
+
+    def test_post_edit_show_correct_context(self):
+        """Шаблон post_edit сформирован с правильным контекстом."""
+        response = self.authorized_client.get(
+            reverse('posts:post_edit', kwargs={'post_id': self.post.pk})
+        )
+        form_fields = {
+            'text': forms.fields.CharField,
+            'group': forms.models.ModelChoiceField,
+        }
+        for value, expected in form_fields.items():
+            with self.subTest(value=value):
+                form_field = response.context.get('form').fields.get(value)
+                self.assertIsInstance(form_field, expected)
+        self.assertTrue(response.context.get('is_edit'))
+        self.assertEqual(response.context.get('post_id'), 1)
+
+    def test_post_detail_show_correct_context(self):
+        """Шаблон post_detail сформирован с правильным контекстом."""
+        response = self.authorized_client.get(
+            reverse('posts:post_detail', kwargs={'post_id': self.post.pk})
+        )
+        self.assertEqual(
+            response.context['post'].text, self.post.text
+        )
+        self.assertEqual(
+            response.context['post'].author, self.post.author
+        )
+        self.assertEqual(
+            response.context['post'].group, self.post.group
+        )
+        self.assertEqual(
+            response.context['post_number'],
+            Post.objects.filter(author=self.user).count()
+        )
+
+    def test_new_post_with_group_in_correct_pages(self):
+        """Новый пост с группой отображается на правильных страницах"""
+        new_group = Group.objects.create(
+            title='Тестовая группа 2',
+            slug='test-slug-2',
+            description='Тестовое описание 2',
+        )
+        new_post = Post.objects.create(
+            author=self.user,
+            text='Тестовый пост с новой группой',
+            group=new_group,
+        )
+        response = self.authorized_client.get(
+            reverse('posts:index')
+        )
+        self.assertIn(new_post, response.context['page_obj'])
+        response = self.authorized_client.get(
+            reverse('posts:group_list', kwargs={'slug': new_group.slug})
+        )
+        self.assertIn(new_post, response.context['page_obj'])
+        response = self.authorized_client.get(
+            reverse('posts:group_list', kwargs={'slug': self.group.slug})
+        )
+        self.assertNotIn(new_post, response.context['page_obj'])
+        response = self.authorized_client.get(
+            reverse('posts:profile', kwargs={'username': self.user.username})
+        )
+        self.assertIn(new_post, response.context['page_obj'])
 
     def test_index_show_correct_context(self):
         """Шаблон страницы index сформирован с правильным контекстом."""
@@ -103,40 +204,26 @@ class PostPagesTests(TestCase):
             response.context['page_obj'][Post.objects.count() - 1].image,
         )
 
-    def test_post_detail_show_correct_context(self):
-        """Шаблон post_detail сформирован с правильным контекстом."""
-        response = self.authorized_client.get(
-            reverse('posts:post_detail', kwargs={'post_id': self.post.pk})
-        )
-        self.assertEqual(
-            response.context['post'].text, self.post.text
-        )
-        self.assertEqual(
-            response.context['post'].author, self.post.author
-        )
-        self.assertEqual(
-            response.context['post'].group, self.post.group
-        )
-        self.assertEqual(
-            response.context['post_number'],
-            Post.objects.filter(author=self.user).count()
-        )
-        self.assertEqual(
-            response.context['post'].image,
-            self.post.image
-        )
 
-    def test_post_create_show_correct_context(self):
-        """Шаблон post_create сформирован с правильным контекстом."""
-        response = self.authorized_client.get(reverse('posts:post_create'))
-        form_fields = {
-            'text': forms.fields.CharField,
-            'group': forms.models.ModelChoiceField,
-        }
-        for value, expected in form_fields.items():
-            with self.subTest(value=value):
-                form_field = response.context.get('form').fields.get(value)
-                self.assertIsInstance(form_field, expected)
+class PaginatorViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='test-author')
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
+        cls.group = Group.objects.create(
+            title='Тестовая группа',
+            slug='test-slug',
+            description='Тестовое описание',
+        )
+        TEST_POST_COUNT = 14
+        posts = (
+            Post(
+                author=cls.user,
+                text=f'Тестовый пост №{i}',
+                group=cls.group) for i in range(TEST_POST_COUNT))
+        Post.objects.bulk_create(posts)
 
     def test_pages_with_pagination_contain_ten_and_four_records(self):
         """Шаблоны страниц index, group_list, profile сформированы

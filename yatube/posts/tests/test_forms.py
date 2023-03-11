@@ -70,7 +70,7 @@ class PostFormTests(TestCase):
         }
         # Отправляем POST-запрос
         response = self.authorized_client.post(
-            reverse('post:post_create'),
+            reverse('posts:post_create'),
             data=form_data,
             follow=True
         )
