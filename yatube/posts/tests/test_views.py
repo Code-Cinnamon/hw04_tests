@@ -111,12 +111,12 @@ class PostPagesTests(TestCase):
             reverse('posts:post_detail',
                     kwargs={'post_id': self.post.id}))
         self.check_context_contains_page_or_post(response.context, post=True)
-        '''self.assertIn('author', response.context)
-        self.assertEqual(response.context['author'], self.user)'''
-        self.assertIn('posts_count', response.context)
+        self.assertIn('post', response.context)
+        self.assertEqual(response.context['post'], self.post)
+        '''self.assertIn('posts_count', response.context)
         self.assertEqual(
             response.context['posts_count'], self.user.posts.count()
-        )
+        )'''
 
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
