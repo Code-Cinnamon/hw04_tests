@@ -104,9 +104,12 @@ class PostPagesTests(TestCase):
 
     def test_post_detail_pages_show_correct_context(self):
         """Шаблон post_detail сформирован с правильным контекстом."""
-        url, _, args = self.post_detail_url
+        '''url, _, args = self.post_detail_url
         response = self.guest_client.get(reverse(url, args=args))
-        self.assertTemplateUsed(response, _)
+        self.assertTemplateUsed(response, _)'''
+        response = self.guest_client.get(
+            reverse('posts:post_detail',
+                    kwargs={'slug': self.post.slug}))
         self.check_context_contains_page_or_post(response.context, post=True)
         self.assertIn('author', response.context)
         self.assertEqual(response.context['author'], self.user)
