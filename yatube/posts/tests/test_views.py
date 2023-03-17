@@ -109,7 +109,7 @@ class PostPagesTests(TestCase):
         self.assertTemplateUsed(response, _)'''
         response = self.guest_client.get(
             reverse('posts:post_detail',
-                    kwargs={'slug': self.post.slug}))
+                    kwargs={'post_id': self.post.id}))
         self.check_context_contains_page_or_post(response.context, post=True)
         self.assertIn('author', response.context)
         self.assertEqual(response.context['author'], self.user)
