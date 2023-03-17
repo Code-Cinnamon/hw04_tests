@@ -23,12 +23,6 @@ class PostFormsTests(TestCase):
             description='Тестовое описание 2',
         )
 
-        '''cls.post = Post.objects.create(
-            text='Test',
-            author=cls.TestUser,
-            group=cls.group,
-        )'''
-
     def setUp(self):
         self.guest_client = Client()
         self.authorized_client = Client()
@@ -91,12 +85,7 @@ class PostFormsTests(TestCase):
         )
         self.assertRedirects(response, redirect)
         self.assertEqual(Post.objects.count(), 1)
-        self.assertTrue(
-            Post.objects.filter(
-                text=form_data["text"],
-                author=self.TestUser).exists()
-        )
-        self.assertTrue(
-            Post.objects.filter(
-                group=form_data['group']).exists(),
-        )
+        post = Post.objects.first()
+        self.assertEqual(post.text, form_data["text"])
+        self.assertEqual(post.author, self.TestUser)
+        self.assertEqual(post.group, self.group2)
