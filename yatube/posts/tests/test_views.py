@@ -108,8 +108,8 @@ class PostPagesTests(TestCase):
         response = self.guest_client.get(reverse(url, args=args))
         self.assertTemplateUsed(response, _)
         self.check_context_contains_page_or_post(response.context, post=True)
-        self.assertIn('user', response.context)
-        self.assertEqual(response.context['user'], self.user)
+        self.assertIn('post', response.context)
+        self.assertEqual(response.context['post'], self.user)
         self.assertIn('posts_count', response.context)
         self.assertEqual(
             response.context['posts_count'], self.user.posts.count()
